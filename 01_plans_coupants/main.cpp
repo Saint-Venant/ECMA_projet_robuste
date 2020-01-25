@@ -465,7 +465,7 @@ void saveResults(int nbIterations, double calculationTime, std::vector<float>& v
   outputFile.open(outputFileName.c_str());
   outputFile << "instance: " << instanceName << endl;
   outputFile << "calculation_time: " << calculationTime << endl;
-  outputFile << "nb_iterations: " << nbIterations << endl;
+  outputFile << "nb_iterations: " << nbIterations << endl << endl;
   outputFile << "valuesMaster: ";
   for (unsigned int p=0; p<valuesMaster.size(); p++) {
     outputFile << valuesMaster[p] << " ";
@@ -496,6 +496,8 @@ int main(int argc, char* argv[]){
           maxIter = std::stoi(argv[i + 1]);
       if (string(argv[i]).compare("-maxTime") == 0)
           maxTime = std::stoi(argv[i + 1]);
+      if (string(argv[i]).compare("-outputFileName") == 0)
+          outputFileName = argv[i + 1];
   }
 
   IloEnv env;
@@ -545,11 +547,13 @@ int main(int argc, char* argv[]){
   bool cutAdded = true;
   int iteration = 0;
   time_t timer = time(NULL);
-  while ((iteration < maxIter) && (cutAdded) && (difftime(timer, timeBegin) < maxTime)) {
+  double dt = maxTime - difftime(timer, timeBegin);
+  while ((iteration < maxIter) && (cutAdded) && (dt > 0)) {
     cutAdded = false;
 
     // Master problem
     IloCplex cplex(model);
+    cplex.setParam(IloCplex::TiLim, dt);
     cplex.solve();
     getSolution(valueSolution, xSolution, ySolution, x, y, cplex, env);
     displaySolution(valueSolution, xSolution, ySolution);
@@ -583,6 +587,7 @@ int main(int argc, char* argv[]){
 
     iteration += 1;
     timer = time(NULL);
+    dt = maxTime - difftime(timer, timeBegin);
   }
 
   env.end();
@@ -590,5 +595,6 @@ int main(int argc, char* argv[]){
   displayEvolution(valuesMaster, valuesSP1, valuesSP2);
   cout << ">> " << iteration << " iterations" << endl;
   cout << ">> " << difftime(timer, timeBegin) << " seconds" << endl;
+  cout << ">> objective value : " << valueSolution << endl;
   return 0;
 }
