@@ -6,6 +6,7 @@ using namespace std;
 
 #include <vector>
 #include <cmath>
+#include <ctime>
 
 typedef IloArray<IloBoolVarArray> VarBoolMatrix;
 typedef IloArray<IloNumVarArray> VarNumMatrix;
@@ -458,15 +459,43 @@ void displayEvolution(std::vector<float>& valuesMaster, std::vector<float>& valu
   cout << endl;
 }
 
+void saveResults(int nbIterations, double calculationTime, std::vector<float>& valuesMaster, std::vector<float>& valuesSP1,
+                 std::vector<float>& valuesSP2, string instanceName, string outputFileName) {
+  std::ofstream outputFile;
+  outputFile.open(outputFileName.c_str());
+  outputFile << "instance: " << instanceName << endl;
+  outputFile << "calculation_time: " << calculationTime << endl;
+  outputFile << "nb_iterations: " << nbIterations << endl;
+  outputFile << "valuesMaster: ";
+  for (unsigned int p=0; p<valuesMaster.size(); p++) {
+    outputFile << valuesMaster[p] << " ";
+  }
+  outputFile << endl << "valuesSP1: ";
+  for (unsigned int p=0; p<valuesSP1.size(); p++) {
+    outputFile << valuesSP1[p] << " ";
+  }
+  outputFile << endl << "valuesSP2: ";
+  for (unsigned int p=0; p<valuesSP2.size(); p++) {
+    outputFile << valuesSP2[p] << " ";
+  }
+  outputFile << endl;
+  outputFile.close();
+}
+
 
 int main(int argc, char* argv[]){
   string instanceName;
   int maxIter = 10;
+  time_t timeBegin = time(NULL);
+  double maxTime = 60;
+  string outputFileName = "defaultSave.txt";
   for (int i = 0; i < argc; i++){
       if (string(argv[i]).compare("-instanceName") == 0)
           instanceName = argv[i + 1];
       if (string(argv[i]).compare("-maxIter") == 0)
           maxIter = std::stoi(argv[i + 1]);
+      if (string(argv[i]).compare("-maxTime") == 0)
+          maxTime = std::stoi(argv[i + 1]);
   }
 
   IloEnv env;
@@ -515,7 +544,8 @@ int main(int argc, char* argv[]){
 
   bool cutAdded = true;
   int iteration = 0;
-  while ((iteration < maxIter) && (cutAdded)) {
+  time_t timer = time(NULL);
+  while ((iteration < maxIter) && (cutAdded) && (difftime(timer, timeBegin) < maxTime)) {
     cutAdded = false;
 
     // Master problem
@@ -552,10 +582,13 @@ int main(int argc, char* argv[]){
     valuesSP2.push_back(maxValue2);
 
     iteration += 1;
+    timer = time(NULL);
   }
 
   env.end();
+  saveResults(iteration, difftime(timer, timeBegin), valuesMaster, valuesSP1, valuesSP2, instanceName, outputFileName);
   displayEvolution(valuesMaster, valuesSP1, valuesSP2);
   cout << ">> " << iteration << " iterations" << endl;
+  cout << ">> " << difftime(timer, timeBegin) << " seconds" << endl;
   return 0;
 }
