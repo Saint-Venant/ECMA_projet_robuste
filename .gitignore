@@ -1,3 +1,5 @@
 01_plans_coupants/main
 01_plans_coupants/Makefile
 01_plans_coupants/simulation1
+
+02_dualisation/*.dat
