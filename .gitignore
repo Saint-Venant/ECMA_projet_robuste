@@ -3,3 +3,5 @@
 01_plans_coupants/simulation1
 
 02_dualisation/*.dat
+02_dualisation/*.project
+02_dualisation/*.oplproject

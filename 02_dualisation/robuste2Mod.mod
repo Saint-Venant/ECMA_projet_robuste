@@ -27,7 +27,11 @@ for (var i in rangeN){for(var j in rangeN){
 
 {Edge} edges = {<i,j> | i in rangeN, j in rangeN : i<j};
 
-
+float temp;
+execute {
+	var before = new Date();
+	temp = before.getTime();
+}
 
 // variables de décision, x,y,alpha,beta
 dvar boolean x[e in edges];
@@ -72,15 +76,41 @@ forall(v in rangeN,k in 1..K){zetakv[k][v]>=0;}*/
 
 }
 
+
 main{
-thisOplModel.generate();
-if (cplex.solve()) {
-var obj=cplex.getObjValue();
-thisOplModel.postProcess();
-writeln("Integer Model"); 
-writeln("OBJECTIVE: ",cplex.getObjValue());
-writeln(thisOplModel.yki);
-}
+	thisOplModel.generate();
+	cplex.tilim = 30;
+	cplex.solve();
+	thisOplModel.postProcess();
+	/*if (cplex.solve()) {
+		var obj=cplex.getObjValue();
+		thisOplModel.postProcess();
+		writeln("Integer Model"); 
+		writeln("OBJECTIVE: ",cplex.getObjValue());
+		writeln(thisOplModel.yki);
+	}*/
 }
 
 
+execute{
+	var after = new Date();
+	var solvingTime = (after.getTime() - temp)/1000;
+	
+	var gap = cplex.getMIPRelativeGap();
+	var bestInteger = cplex.getObjValue();
+	var infBound = cplex.getBestObjValue();
+	
+	var output = new IloOplOutputFile("output.dat");
+	var stat = cplex.status;
+	writeln("status = " + stat);
+	writeln("solving time = " + solvingTime);
+	writeln("best integer solution = " + bestInteger);
+	writeln("best inf bound = " + infBound);
+	writeln("gap = " + gap);
+	output.writeln("status = " + cplex.status + ";");
+	output.writeln("solving time = " + solvingTime);
+	output.writeln("best integer solution = " + bestInteger);
+	output.writeln("best inf bound = " + infBound);
+	output.writeln("gap = " + gap);
+	output.close();
+}
