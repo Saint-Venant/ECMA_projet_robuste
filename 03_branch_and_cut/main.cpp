@@ -27,82 +27,6 @@ std::vector<float> coord_x;
 std::vector<float> coord_y;
 std::vector<std::vector<float>> l;
 
-ILOLAZYCONSTRAINTCALLBACK2(SP1, IloCplex, cplex, IloEnv, env, IloModel, model, VarBoolMatrix, y, IloNumVar, z,
-                           std::vector<std::vector<std::vector<float>>>&, U1_s) {
-  IloEnv env1;
-  IloModel model1(env1);
-
-  NumMatrix ySolution(env1, n);
-  for (int i=0; i<n-1; i++) {
-    IloNumArray sol_y(env1, n-i-1);
-    cplex.getValues(y[i], sol_y);
-    ySolution[i] = sol_y;
-  }
-  IloNum valueSolution = cplex.getObjValue();
-
-  IloNum value1Solution;
-  NumMatrix delta1Solution(env1, n-1);
-  for (int i=0; i<n-1; i++) {
-    delta1Solution[i] = IloNumArray(env1, n-i-1);
-  }
-
-  // Variables
-  VarNumMatrix delta1(env1, n-1);
-
-  setModel1(env1, model1, delta1, ySolution);
-
-  // Resolution
-  IloCplex cplex1(model1);
-  cplex1.solve();
-
-  // Results
-  getSolution1(value1Solution, delta1Solution, delta1, cplex1);
-
-  // Add lazy constraint if necessary
-  if (valueSolution < value1Solution) {
-    // add cut
-    addCutSP1(env, model, y, z, delta1Solution, U1_s);
-  }
-
-  env1.end();
-}
-
-ILOLAZYCONSTRAINTCALLBACK2(SP2, IloCplex, cplex, IloEnv, env, IloModel, model, VarBoolMatrix, x,
-                           std::vector<std::vector<float>>& U2_s) {
-  for (int k=0; k<K; k++) {
-    IloEnv env2;
-    IloModel model2(env2);
-
-    NumMatrix xSolution(env2, n);
-    for (int i=0; i<n; i++) {
-      IloNumArray sol_x(env2, K);
-      cplex.getValues(x[i], sol_x);
-      xSolution[i] = sol_x;
-    }
-
-    IloNum value2Solution;
-    IloNumArray delta2Solution(env2, n);
-
-    // Variables
-    IloNumVarArray delta2(env2, n, 0, W);
-
-    setModel2(k, env2, model2, xSolution, delta2);
-
-    // Resolution
-    IloCplex cplex2(model2);
-    cplex2.solve();
-
-    // Results
-    getSolution2(value2Solution, delta2Solution, delta2, cplex2);
-    if (value2Solution > B) {
-      // add cuts
-      addCutSP2(env, model, x, delta2Solution, U2_s);
-      break;
-    }
-
-    env2.end();
-  }
-}
 
 void getData(string instanceFileName) {
   std::ifstream instanceFile;
@@ -314,9 +238,10 @@ void setModel(IloEnv& env, IloModel& model, VarBoolMatrix& x, VarBoolMatrix& y, 
   }
 }
 
-void getSolution(IloNum& valueSolution, NumMatrix& xSolution, NumMatrix& ySolution,
+void getSolution(IloNum& valueSolution, IloNum& bestInfBound, NumMatrix& xSolution, NumMatrix& ySolution,
                  VarBoolMatrix& x, VarBoolMatrix& y, IloCplex& cplex, IloEnv& env) {
   valueSolution = cplex.getObjValue();
+  bestInfBound = cplex.getBestObjValue();
   for (int i=0; i<n; i++) {
     IloNumArray sol_x(env, K);
     cplex.getValues(x[i], sol_x);
@@ -329,8 +254,10 @@ void getSolution(IloNum& valueSolution, NumMatrix& xSolution, NumMatrix& ySoluti
   }
 }
 
-void displaySolution(IloNum& valueSolution, NumMatrix& xSolution, NumMatrix& ySolution) {
-  cout << "objective Master: " << valueSolution << endl << endl;
+void displaySolution(IloNum& valueSolution, IloNum& bestInfBound, NumMatrix& xSolution,
+                     NumMatrix& ySolution) {
+  cout << "objective Master: " << valueSolution << endl;
+  cout << "best inf bound : " << bestInfBound << endl << endl;
 
   cout << "Vertex > cluster" << endl;
   for (int i=0; i<n; i++) {
@@ -350,7 +277,7 @@ void displaySolution(IloNum& valueSolution, NumMatrix& xSolution, NumMatrix& ySo
     }
     cout << endl;
   }
-} // to include
+}
 
 void setModel1(IloEnv& env1, IloModel& model1, VarNumMatrix& delta1, NumMatrix& ySolution) {
   // variable
@@ -387,10 +314,6 @@ void getSolution1(IloNum& value1Solution, NumMatrix& delta1Solution, VarNumMatri
   }
 }
 
-
-
-
-
 void setModel2(int k, IloEnv& env2, IloModel& model2, NumMatrix& xSolution, IloNumVarArray delta2) {
   // objective function
   IloExpr exprObj(env2);
@@ -419,9 +342,6 @@ void getSolution2(IloNum& value2Solution, IloNumArray& delta2Solution, IloNumVar
   cplex.getValues(delta2, delta2Solution);
 }
 
-
-
-
 void addCutSP1(IloEnv& env, IloModel& model, VarBoolMatrix& y, IloNumVar& z, NumMatrix& delta1Solution,
                std::vector<std::vector<std::vector<float>>>& U1_s) {
   IloExpr exprCtsum(env);
@@ -439,7 +359,7 @@ void addCutSP1(IloEnv& env, IloModel& model, VarBoolMatrix& y, IloNumVar& z, Num
   U1_s.push_back(l1);
   model.add(z >= exprCtsum);
   exprCtsum.end();
-}
+} // to remove
 
 void addCutSP2(IloEnv& env, IloModel& model, VarBoolMatrix& x, IloNumArray& delta2Solution,
                std::vector<std::vector<float>>& U2_s) {
@@ -458,30 +378,185 @@ void addCutSP2(IloEnv& env, IloModel& model, VarBoolMatrix& x, IloNumArray& delt
   }
 }
 
-
-
-void saveResults(int nbIterations, double calculationTime, std::vector<float>& valuesMaster, std::vector<float>& valuesSP1,
-                 std::vector<float>& valuesSP2, string instanceName, string outputFileName) {
+void saveResults(IloNum valueSolution, IloNum bestInfBound, double calculationTime, string instanceName,
+                 string outputFileName) {
   std::ofstream outputFile;
   outputFile.open(outputFileName.c_str());
   outputFile << "instance: " << instanceName << endl;
   outputFile << "calculation_time: " << calculationTime << endl;
-  outputFile << "nb_iterations: " << nbIterations << endl << endl;
-  outputFile << "valuesMaster: ";
-  for (unsigned int p=0; p<valuesMaster.size(); p++) {
-    outputFile << valuesMaster[p] << " ";
-  }
-  outputFile << endl << "valuesSP1: ";
-  for (unsigned int p=0; p<valuesSP1.size(); p++) {
-    outputFile << valuesSP1[p] << " ";
-  }
-  outputFile << endl << "valuesSP2: ";
-  for (unsigned int p=0; p<valuesSP2.size(); p++) {
-    outputFile << valuesSP2[p] << " ";
-  }
-  outputFile << endl;
+  outputFile << "best integer : " << valueSolution << endl;
+  outputFile << "best inf bound : " << bestInfBound << endl;
   outputFile.close();
-} // to include
+}
+
+struct Args {
+  IloEnv env;
+  IloModel model;
+  VarBoolMatrix x;
+  VarBoolMatrix y;
+  IloNumVar z;
+  std::vector<std::vector<std::vector<float>>> U1_s;
+  std::vector<std::vector<float>> U2_s;
+
+  Args(IloEnv& env, IloModel& model, VarBoolMatrix& x, VarBoolMatrix& y, IloNumVar& z,
+       std::vector<std::vector<std::vector<float>>>& U1_s, std::vector<std::vector<float>>& U2_s) :
+       env(env), model(model), x(x), y(y), z(z), U1_s(U1_s), U2_s(U2_s) {}
+};
+
+/*
+ILOLAZYCONSTRAINTCALLBACK6(SP1, IloCplex&, cplex, IloEnv&, env, IloModel&, model, VarBoolMatrix&, y, IloNumVar&, z,
+                           std::vector<std::vector<std::vector<float>>>&, U1_s) {
+  IloEnv env1;
+  IloModel model1(env1);
+
+  NumMatrix ySolution(env1, n);
+  for (int i=0; i<n-1; i++) {
+    IloNumArray sol_y(env1, n-i-1);
+    cplex.getValues(y[i], sol_y);
+    ySolution[i] = sol_y;
+  }
+  IloNum valueSolution = cplex.getObjValue();
+
+  IloNum value1Solution;
+  NumMatrix delta1Solution(env1, n-1);
+  for (int i=0; i<n-1; i++) {
+    delta1Solution[i] = IloNumArray(env1, n-i-1);
+  }
+
+  // Variables
+  VarNumMatrix delta1(env1, n-1);
+
+  setModel1(env1, model1, delta1, ySolution);
+
+  // Resolution
+  IloCplex cplex1(model1);
+  cplex1.solve();
+
+  // Results
+  getSolution1(value1Solution, delta1Solution, delta1, cplex1);
+
+  // Add lazy constraint if necessary
+  if (valueSolution < value1Solution) {
+    // add cut
+    addCutSP1(env, model, y, z, delta1Solution, U1_s);
+  }
+
+  env1.end();
+}*/
+
+/*
+ILOLAZYCONSTRAINTCALLBACK5(SP2, IloCplex&, cplex, IloEnv&, env, IloModel&, model, VarBoolMatrix&, x,
+                           std::vector<std::vector<float>>&, U2_s) {
+  for (int k=0; k<K; k++) {
+    IloEnv env2;
+    IloModel model2(env2);
+
+    NumMatrix xSolution(env2, n);
+    for (int i=0; i<n; i++) {
+      IloNumArray sol_x(env2, K);
+      cplex.getValues(x[i], sol_x);
+      xSolution[i] = sol_x;
+    }
+
+    IloNum value2Solution;
+    IloNumArray delta2Solution(env2, n);
+
+    // Variables
+    IloNumVarArray delta2(env2, n, 0, W);
+
+    setModel2(k, env2, model2, xSolution, delta2);
+
+    // Resolution
+    IloCplex cplex2(model2);
+    cplex2.solve();
+
+    // Results
+    getSolution2(value2Solution, delta2Solution, delta2, cplex2);
+    if (value2Solution > B) {
+      // add cuts
+      addCutSP2(env, model, x, delta2Solution, U2_s);
+      break;
+    }
+
+    env2.end();
+  }
+}*/
+
+ILOLAZYCONSTRAINTCALLBACK2(SP1, IloCplex, cplex, Args, args) {
+  IloEnv env1;
+  IloModel model1(env1);
+
+  NumMatrix ySolution(env1, n);
+  for (int i=0; i<n-1; i++) {
+    IloNumArray sol_y(env1, n-i-1);
+    cplex.getValues(args.y[i], sol_y);
+    ySolution[i] = sol_y;
+  }
+  IloNum valueSolution = cplex.getObjValue();
+
+  IloNum value1Solution;
+  NumMatrix delta1Solution(env1, n-1);
+  for (int i=0; i<n-1; i++) {
+    delta1Solution[i] = IloNumArray(env1, n-i-1);
+  }
+
+  // Variables
+  VarNumMatrix delta1(env1, n-1);
+
+  setModel1(env1, model1, delta1, ySolution);
+
+  // Resolution
+  IloCplex cplex1(model1);
+  cplex1.solve();
+
+  // Results
+  getSolution1(value1Solution, delta1Solution, delta1, cplex1);
+
+  // Add lazy constraint if necessary
+  if (valueSolution < value1Solution) {
+    // add cut
+    addCutSP1(args.env, args.model, args.y, args.z, delta1Solution, args.U1_s);
+  }
+
+  env1.end();
+}
+
+ILOLAZYCONSTRAINTCALLBACK2(SP2, IloCplex, cplex, Args, args) {
+  for (int k=0; k<K; k++) {
+    IloEnv env2;
+    IloModel model2(env2);
+
+    NumMatrix xSolution(env2, n);
+    for (int i=0; i<n; i++) {
+      IloNumArray sol_x(env2, K);
+      cplex.getValues(args.x[i], sol_x);
+      xSolution[i] = sol_x;
+    }
+
+    IloNum value2Solution;
+    IloNumArray delta2Solution(env2, n);
+
+    // Variables
+    IloNumVarArray delta2(env2, n, 0, W);
+
+    setModel2(k, env2, model2, xSolution, delta2);
+
+    // Resolution
+    IloCplex cplex2(model2);
+    cplex2.solve();
+
+    // Results
+    getSolution2(value2Solution, delta2Solution, delta2, cplex2);
+    if (value2Solution > B) {
+      // add cuts
+      addCutSP2(args.env, args.model, args.x, delta2Solution, args.U2_s);
+      break;
+    }
+
+    env2.end();
+  }
+}
+
 
 
 int main(int argc, char* argv[]){
@@ -491,7 +566,7 @@ int main(int argc, char* argv[]){
   string outputFileName = "defaultSave.txt";
   for (int i = 0; i < argc; i++){
       if (string(argv[i]).compare("-instanceName") == 0)
-          maxIter = std::stoi(argv[i + 1]);
+          instanceName = argv[i + 1];
       if (string(argv[i]).compare("-maxTime") == 0)
           maxTime = std::stoi(argv[i + 1]);
       if (string(argv[i]).compare("-outputFileName") == 0)
@@ -526,6 +601,7 @@ int main(int argc, char* argv[]){
 
   // Resolution
   IloNum valueSolution;
+  IloNum bestInfBound;
   NumMatrix xSolution(env, n);
   NumMatrix ySolution(env, n);
 
@@ -533,16 +609,24 @@ int main(int argc, char* argv[]){
   IloCplex cplex(model);
   time_t timer = time(NULL);
   double dt = maxTime - difftime(timer, timeBegin);
-  cplex.setParam(IloCplex::TiLim, dt);
-  cplex.solve();
-  getSolution(valueSolution, xSolution, ySolution, x, y, cplex, env);
-  displaySolution(valueSolution, xSolution, ySolution);
+  try {
+    cplex.setParam(IloCplex::TiLim, dt);
+    cplex.use(SP1(env, cplex, Args(env, model, x, y, z, U1_s, U2_s)));
+    cplex.use(SP2(env, cplex, Args(env, model, x, y, z, U1_s, U2_s)));
+    cplex.solve();
+    getSolution(valueSolution, bestInfBound, xSolution, ySolution, x, y, cplex, env);
+    displaySolution(valueSolution, bestInfBound, xSolution, ySolution);
+  } catch (const IloException& e){
+    cerr << e;
+    throw;
+  }
+
 
   env.end();
-  //saveResults(iteration, difftime(timer, timeBegin), valuesMaster, valuesSP1, valuesSP2, instanceName, outputFileName);
-  displayEvolution(valuesMaster, valuesSP1, valuesSP2);
-  cout << ">> " << iteration << " iterations" << endl;
+  timer = time(NULL);
+  saveResults(valueSolution, bestInfBound, difftime(timer, timeBegin), instanceName, outputFileName);
   cout << ">> " << difftime(timer, timeBegin) << " seconds" << endl;
   cout << ">> objective value : " << valueSolution << endl;
+  cout << ">> best inf bound : " << bestInfBound << endl;
   return 0;
 }
