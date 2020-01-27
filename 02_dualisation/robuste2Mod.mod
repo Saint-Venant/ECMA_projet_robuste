@@ -79,7 +79,7 @@ forall(v in rangeN,k in 1..K){zetakv[k][v]>=0;}*/
 
 main{
 	thisOplModel.generate();
-	cplex.tilim = 30;
+	cplex.tilim = 7*60;
 	cplex.solve();
 	thisOplModel.postProcess();
 	/*if (cplex.solve()) {

@@ -15,4 +15,3 @@ for instance in instances:
     command = commandFormat.format(model, instanceName)
     os.system(command)
     shutil.move('output.dat', 'simulation2/' + instance[:-4] + '_results.dat')
-    break
