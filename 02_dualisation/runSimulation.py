@@ -9,9 +9,17 @@ instances = os.listdir(data)
 commandFormat = 'oplrun.exe {} {}'
 
 for instance in instances:
-    print(instance)
     instanceName = data + instance
-    #outputFileName = output + instance[:-4] + '_results.dat'
-    command = commandFormat.format(model, instanceName)
-    os.system(command)
-    shutil.move('output.dat', 'simulation2/' + instance[:-4] + '_results.dat')
+    outputFileName = instance[:-4] + '_results.dat'
+    outputDirName = output + outputFileName
+
+    if outputFileName not in os.listdir(output):
+        print(instance)
+        print()
+        
+        try:
+            command = commandFormat.format(model, instanceName)
+            os.system(command)
+            shutil.move('output.dat', outputDirName)
+        except Exception:
+            pass
