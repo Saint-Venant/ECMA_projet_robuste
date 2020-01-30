@@ -4,6 +4,7 @@ data_small/
 01_plans_coupants/main
 01_plans_coupants/Makefile
 01_plans_coupants/simulation1/
+01_plans_coupants/defaultSave.txt
 
 02_dualisation/*.dat
 02_dualisation/*.project

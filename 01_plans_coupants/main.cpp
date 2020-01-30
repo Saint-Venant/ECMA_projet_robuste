@@ -178,14 +178,14 @@ void initU2_s(std::vector<std::vector<float>>& U2_s) {
   U2_s.push_back(mat);
 }
 
-void setModel(IloEnv& env, IloModel& model, VarBoolMatrix& x, VarBoolMatrix& y, IloNumVar& z,
+void setModel(IloEnv& env, IloModel& model, VarBoolMatrix& x, VarNumMatrix& y, IloNumVar& z,
               std::vector<std::vector<std::vector<float>>>& U1_s, std::vector<std::vector<float>>& U2_s) {
   // variables
   for (int i=0; i<n; i++) {
     x[i] = IloBoolVarArray(env, K);
   }
   for (int i=0; i<n-1; i++) {
-    y[i] = IloBoolVarArray(env, n-i-1);
+    y[i] = IloNumVarArray(env, n-i-1, 0, 1);
   }
 
   // objective function
@@ -238,7 +238,7 @@ void setModel(IloEnv& env, IloModel& model, VarBoolMatrix& x, VarBoolMatrix& y, 
 }
 
 void getSolution(IloNum& valueSolution, NumMatrix& xSolution, NumMatrix& ySolution,
-                 VarBoolMatrix& x, VarBoolMatrix& y, IloCplex& cplex, IloEnv& env) {
+                 VarBoolMatrix& x, VarNumMatrix& y, IloCplex& cplex, IloEnv& env) {
   valueSolution = cplex.getObjValue();
   for (int i=0; i<n; i++) {
     IloNumArray sol_x(env, K);
@@ -406,7 +406,7 @@ void solveSP2_k(int k, NumMatrix& xSolution, IloNum& value2Solution, IloNumArray
   env2.end();
 }
 
-void addCutSP1(IloEnv& env, IloModel& model, VarBoolMatrix& y, IloNumVar& z, NumMatrix& delta1Solution,
+void addCutSP1(IloEnv& env, IloModel& model, VarNumMatrix& y, IloNumVar& z, NumMatrix& delta1Solution,
                std::vector<std::vector<std::vector<float>>>& U1_s) {
   IloExpr exprCtsum(env);
   float coef;
@@ -485,15 +485,12 @@ void saveResults(int nbIterations, double calculationTime, std::vector<float>& v
 
 int main(int argc, char* argv[]){
   string instanceName;
-  int maxIter = 10;
   time_t timeBegin = time(NULL);
   double maxTime = 60;
   string outputFileName = "defaultSave.txt";
   for (int i = 0; i < argc; i++){
       if (string(argv[i]).compare("-instanceName") == 0)
           instanceName = argv[i + 1];
-      if (string(argv[i]).compare("-maxIter") == 0)
-          maxIter = std::stoi(argv[i + 1]);
       if (string(argv[i]).compare("-maxTime") == 0)
           maxTime = std::stoi(argv[i + 1]);
       if (string(argv[i]).compare("-outputFileName") == 0)
@@ -524,7 +521,7 @@ int main(int argc, char* argv[]){
 
   // Variables
   VarBoolMatrix x(env, n);
-  VarBoolMatrix y(env, n-1);
+  VarNumMatrix y(env, n-1);
   IloNumVar z(env, 0);
 
   setModel(env, model, x, y, z, U1_s, U2_s);
@@ -548,7 +545,7 @@ int main(int argc, char* argv[]){
   int iteration = 0;
   time_t timer = time(NULL);
   double dt = maxTime - difftime(timer, timeBegin);
-  while ((iteration < maxIter) && (cutAdded) && (dt > 0)) {
+  while ((cutAdded) && (dt > 0)) {
     cutAdded = false;
 
     // Master problem
