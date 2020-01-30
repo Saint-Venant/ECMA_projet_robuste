@@ -1,3 +1,5 @@
+data_small/
+
 01_plans_coupants/main
 01_plans_coupants/Makefile
 01_plans_coupants/simulation1/
@@ -10,3 +12,4 @@
 03_branch_and_cut/Makefile
 03_branch_and_cut/main
 03_branch_and_cut/defaultSave.txt
+03_branch_and_cut/simulation3/

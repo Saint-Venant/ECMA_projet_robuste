@@ -34,7 +34,7 @@ execute {
 }
 
 // variables de décision, x,y,alpha,beta
-dvar boolean x[e in edges];
+dvar float+ x[e in edges];
 dvar boolean yki[1..K][rangeN];
 dvar float+ alpha;
 dvar float+ beta[e in edges];
@@ -79,7 +79,7 @@ forall(v in rangeN,k in 1..K){zetakv[k][v]>=0;}*/
 
 main{
 	thisOplModel.generate();
-	cplex.tilim = 7*60;
+	cplex.tilim = 2*60;
 	cplex.solve();
 	thisOplModel.postProcess();
 	/*if (cplex.solve()) {
