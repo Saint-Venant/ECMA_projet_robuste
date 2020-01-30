@@ -246,6 +246,18 @@ void setModel(IloEnv& env, IloModel& model, VarBoolMatrix& x, VarBoolMatrix& y, 
       model.add(x[i][k] == 0);
     }
   }
+  for (int i=1; i<n; i++) {
+    for (int k=1; k<K-1; k++) {
+      for (int kk=k+1; kk<K; kk++) {
+        IloExpr exprCtSymetry(env);
+        for (int j=0; j<i; j++) {
+          exprCtSymetry += x[j][k];
+        }
+        model.add(x[i][kk] <= exprCtSymetry);
+        exprCtSymetry.end();
+      }
+    }
+  }
 }
 
 void setLpModel(IloEnv& lpEnv, IloModel& lpModel, VarNumMatrix& lpx, VarNumMatrix& lpy, IloNumVar& lpz,
@@ -311,6 +323,18 @@ void setLpModel(IloEnv& lpEnv, IloModel& lpModel, VarNumMatrix& lpx, VarNumMatri
   for (int i=0; i<K-1; i++) {
     for (int k=i+1; k<K; k++) {
       lpModel.add(lpx[i][k] == 0);
+    }
+  }
+  for (int i=1; i<n; i++) {
+    for (int k=1; k<K-1; k++) {
+      for (int kk=k+1; kk<K; kk++) {
+        IloExpr exprCtSymetry(lpEnv);
+        for (int j=0; j<i; j++) {
+          exprCtSymetry += lpx[j][k];
+        }
+        lpModel.add(lpx[i][kk] <= exprCtSymetry);
+        exprCtSymetry.end();
+      }
     }
   }
 }
@@ -419,16 +443,14 @@ void getSolution2(IloNum& value2Solution, IloNumArray& delta2Solution, IloNumVar
   cplex.getValues(delta2, delta2Solution);
 }
 
-void computeCutSP1(IloExpr& exprCtsum1, VarBoolMatrix& y, NumMatrix& delta1Solution,
+void computeCutSP1(std::vector<std::vector<float>>& l1, VarBoolMatrix& y, NumMatrix& delta1Solution,
                    std::vector<std::vector<std::vector<float>>>& U1_s) {
   float coef;
-  std::vector<std::vector<float>> l1;
   for (int i=0; i<n-1; i++) {
     std::vector<float> row;
     for (int j=i+1; j<n; j++) {
       coef = l[i][j-i-1] + delta1Solution[i][j-i-1]*(lh[i] + lh[j]);
       row.push_back(coef);
-      exprCtsum1 += coef*y[i][j-i-1];
     }
     l1.push_back(row);
   }
@@ -451,6 +473,7 @@ bool improveModel_SP1(IloCplex& lpCplex, std::vector<std::vector<float>>& l1, Va
   lpCplex.solve();
   IloNum lpValueSolution = lpCplex.getObjValue();
   bool cutFound1 = false;
+  float eps = 0.1;
 
   // --- Solve SP1
   IloEnv env1;
@@ -480,7 +503,7 @@ bool improveModel_SP1(IloCplex& lpCplex, std::vector<std::vector<float>>& l1, Va
   getSolution1(value1Solution, delta1Solution, delta1, cplex1);
 
   // Add cut if necessary
-  if (lpValueSolution < value1Solution) {
+  if (lpValueSolution < value1Solution - eps) {
     cutFound1 = true;
     float coef;
     for (int i=0; i<n-1; i++) {
@@ -574,6 +597,7 @@ ILOLAZYCONSTRAINTCALLBACK7(myLazyConstraintCallback, VarBoolMatrix, x, VarBoolMa
   IloNum bestInfBound = getBestObjValue();
   info.valuesBestInteger.push_back(valueSolution);
   info.valuesInfBound.push_back(bestInfBound);
+  bool integerCut = false;
 
   // --- Solve SP1
   IloEnv env1;
@@ -604,11 +628,23 @@ ILOLAZYCONSTRAINTCALLBACK7(myLazyConstraintCallback, VarBoolMatrix, x, VarBoolMa
 
   // Add lazy constraint if necessary
   if (valueSolution < value1Solution) {
+    integerCut = true;
     IloExpr exprCtsum1(masterEnv);
-    computeCutSP1(exprCtsum1, y, delta1Solution, U1_s);
+    IloExpr lpExprCtsum1(relaxation.lpEnv);
+    std::vector<std::vector<float>> l1;
+    computeCutSP1(l1, y, delta1Solution, U1_s);
+    for (int i=0; i<n-1; i++) {
+      for (int j=i+1; j<n; j++) {
+        exprCtsum1 += l1[i][j-i-1]*y[i][j-i-1];
+        lpExprCtsum1 += l1[i][j-i-1]*relaxation.lpy[i][j-i-1];
+      }
+    }
     add(z >= exprCtsum1);
+    relaxation.lpModel.add(relaxation.lpz >= lpExprCtsum1);
     exprCtsum1.end();
+    lpExprCtsum1.end();
     info.nbCutsSP1 += 1;
+    cout << "Added cut SP1 !" << endl;
   }
 
   env1.end();
@@ -640,20 +676,26 @@ ILOLAZYCONSTRAINTCALLBACK7(myLazyConstraintCallback, VarBoolMatrix, x, VarBoolMa
 
     // Add lazy constraint if necessary
     if (value2Solution > B) {
+      integerCut = true;
       std::vector<float> w2;
       for (int i=0; i<n; i++) {
         w2.push_back(w_v[i]*(1 + delta2Solution[i]));
       }
       U2_s.push_back(w2);
-      for (int kk=0; k<K; k++) {
+      for (int kk=0; kk<K; kk++) {
         IloExpr exprCtsum2(masterEnv);
+        IloExpr lpExprCtsum2(relaxation.lpEnv);
         for (int i=0; i<n; i++) {
           exprCtsum2 += w2[i]*x[i][kk];
+          lpExprCtsum2 += w2[i]*relaxation.lpx[i][kk];
         }
         add(exprCtsum2 <= B);
+        relaxation.lpModel.add(lpExprCtsum2 <= B);
         exprCtsum2.end();
+        lpExprCtsum2.end();
       }
       info.nbCutsSP2 += 1;
+      cout << "Added cut SP2 !" << endl;
       break;
     }
 
@@ -664,7 +706,7 @@ ILOLAZYCONSTRAINTCALLBACK7(myLazyConstraintCallback, VarBoolMatrix, x, VarBoolMa
   bool cutFound1 = true;
   bool cutFound2 = true;
   int improveCuts= 0;
-  while ((cutFound1 || cutFound2) && (improveCuts < 5)) {
+  while ((integerCut) && (cutFound1 || cutFound2) && (improveCuts < 5)) {
     improveCuts += 1;
     std::vector<std::vector<float>> l1;
     cutFound1 = improveModel_SP1(relaxation.lpCplex, l1, y, relaxation.lpy, U1_s);
