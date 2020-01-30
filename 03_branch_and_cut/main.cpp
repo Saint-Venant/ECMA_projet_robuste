@@ -181,14 +181,14 @@ void initU2_s(std::vector<std::vector<float>>& U2_s) {
   U2_s.push_back(mat);
 }
 
-void setModel(IloEnv& env, IloModel& model, VarBoolMatrix& x, VarBoolMatrix& y, IloNumVar& z,
+void setModel(IloEnv& env, IloModel& model, VarBoolMatrix& x, VarNumMatrix& y, IloNumVar& z,
               std::vector<std::vector<std::vector<float>>>& U1_s, std::vector<std::vector<float>>& U2_s) {
   // variables
   for (int i=0; i<n; i++) {
     x[i] = IloBoolVarArray(env, K);
   }
   for (int i=0; i<n-1; i++) {
-    y[i] = IloBoolVarArray(env, n-i-1);
+    y[i] = IloNumVarArray(env, n-i-1, 0, 1);
   }
 
   // objective function
@@ -340,7 +340,7 @@ void setLpModel(IloEnv& lpEnv, IloModel& lpModel, VarNumMatrix& lpx, VarNumMatri
 }
 
 void getSolution(IloNum& valueSolution, IloNum& bestInfBound, NumMatrix& xSolution, NumMatrix& ySolution,
-                 VarBoolMatrix& x, VarBoolMatrix& y, IloCplex& cplex, IloEnv& env) {
+                 VarBoolMatrix& x, VarNumMatrix& y, IloCplex& cplex, IloEnv& env) {
   valueSolution = cplex.getObjValue();
   bestInfBound = cplex.getBestObjValue();
   for (int i=0; i<n; i++) {
@@ -443,7 +443,7 @@ void getSolution2(IloNum& value2Solution, IloNumArray& delta2Solution, IloNumVar
   cplex.getValues(delta2, delta2Solution);
 }
 
-void computeCutSP1(std::vector<std::vector<float>>& l1, VarBoolMatrix& y, NumMatrix& delta1Solution,
+void computeCutSP1(std::vector<std::vector<float>>& l1, VarNumMatrix& y, NumMatrix& delta1Solution,
                    std::vector<std::vector<std::vector<float>>>& U1_s) {
   float coef;
   for (int i=0; i<n-1; i++) {
@@ -468,7 +468,7 @@ void saveResults(IloNum valueSolution, IloNum bestInfBound, double calculationTi
   outputFile.close();
 }
 
-bool improveModel_SP1(IloCplex& lpCplex, std::vector<std::vector<float>>& l1, VarBoolMatrix& y, VarNumMatrix& lpy,
+bool improveModel_SP1(IloCplex& lpCplex, std::vector<std::vector<float>>& l1, VarNumMatrix& y, VarNumMatrix& lpy,
                       std::vector<std::vector<std::vector<float>>>& U1_s) {
   lpCplex.solve();
   IloNum lpValueSolution = lpCplex.getObjValue();
@@ -588,7 +588,7 @@ struct LPrelaxation {
                lpCplex(cplex), lpx(x), lpy(y), lpz(z) {}
 };
 
-ILOLAZYCONSTRAINTCALLBACK7(myLazyConstraintCallback, VarBoolMatrix, x, VarBoolMatrix, y, IloNumVar, z,
+ILOLAZYCONSTRAINTCALLBACK7(myLazyConstraintCallback, VarBoolMatrix, x, VarNumMatrix, y, IloNumVar, z,
                            std::vector<std::vector<std::vector<float>>>&, U1_s,
                            std::vector<std::vector<float>>&, U2_s, DataInfo&, info, LPrelaxation&, relaxation) {
   cout << endl << "BEGIN LAZY CONSTRAINT CALLBACK" << endl;
@@ -788,7 +788,7 @@ int main(int argc, char* argv[]){
 
   // Variables
   VarBoolMatrix x(env, n);
-  VarBoolMatrix y(env, n-1);
+  VarNumMatrix y(env, n-1);
   IloNumVar z(env, 0);
 
   VarNumMatrix lpx(lpEnv, n);
@@ -857,7 +857,7 @@ int main(int argc, char* argv[]){
   double dt = maxTime - difftime(timer, timeBegin);
   try {
     cplex.setParam(IloCplex::TiLim, dt);
-    cplex.setParam(IloCplex::Param::Strategy::NodeSelect, 0);
+    //cplex.setParam(IloCplex::Param::Strategy::NodeSelect, 0);
     cplex.use(myLazyConstraintCallback(env, x, y, z, U1_s, U2_s, info, relaxation));
     cplex.solve();
     getSolution(valueSolution, bestInfBound, xSolution, ySolution, x, y, cplex, env);
