@@ -64,6 +64,9 @@ forall(k in 1..K, v in rangeN){gammak[k]+zetakv[k][v]>=w_v[v]*yki[k][v];}
 
 forall(i in rangeN){sum(k in 1..K)(yki[k][i])==1;}
 
+forall (i in 1..K-1, k in i+1..K) { yki[k][i] == 0; }
+forall (i in 2..n, k1 in 2..K-1, k2 in k1+1..K : k2>k1) { yki[k2][i] <= sum(j in rangeN : j<i) yki[k1][j]; }
+
 
 }
 
