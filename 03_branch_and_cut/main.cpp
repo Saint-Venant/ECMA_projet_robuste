@@ -182,7 +182,8 @@ void initU2_s(std::vector<std::vector<float>>& U2_s) {
 }
 
 void setModel(IloEnv& env, IloModel& model, VarBoolMatrix& x, VarNumMatrix& y, IloNumVar& z,
-              std::vector<std::vector<std::vector<float>>>& U1_s, std::vector<std::vector<float>>& U2_s) {
+              std::vector<std::vector<std::vector<float>>>& U1_s, std::vector<std::vector<float>>& U2_s,
+              bool antisymetry) {
   // variables
   for (int i=0; i<n; i++) {
     x[i] = IloBoolVarArray(env, K);
@@ -240,28 +241,31 @@ void setModel(IloEnv& env, IloModel& model, VarBoolMatrix& x, VarNumMatrix& y, I
   }
 
   // break symetry
-  assert(K <= n);
-  for (int i=0; i<K-1; i++) {
-    for (int k=i+1; k<K; k++) {
-      model.add(x[i][k] == 0);
+  if (antisymetry) {
+    assert(K <= n);
+    for (int i=0; i<K-1; i++) {
+      for (int k=i+1; k<K; k++) {
+        model.add(x[i][k] == 0);
+      }
     }
-  }
-  for (int i=1; i<n; i++) {
-    for (int k=1; k<K-1; k++) {
-      for (int kk=k+1; kk<K; kk++) {
-        IloExpr exprCtSymetry(env);
-        for (int j=0; j<i; j++) {
-          exprCtSymetry += x[j][k];
+    for (int i=1; i<n; i++) {
+      for (int k=1; k<K-1; k++) {
+        for (int kk=k+1; kk<K; kk++) {
+          IloExpr exprCtSymetry(env);
+          for (int j=0; j<i; j++) {
+            exprCtSymetry += x[j][k];
+          }
+          model.add(x[i][kk] <= exprCtSymetry);
+          exprCtSymetry.end();
         }
-        model.add(x[i][kk] <= exprCtSymetry);
-        exprCtSymetry.end();
       }
     }
   }
 }
 
 void setLpModel(IloEnv& lpEnv, IloModel& lpModel, VarNumMatrix& lpx, VarNumMatrix& lpy, IloNumVar& lpz,
-                std::vector<std::vector<std::vector<float>>>& U1_s, std::vector<std::vector<float>>& U2_s) {
+                std::vector<std::vector<std::vector<float>>>& U1_s, std::vector<std::vector<float>>& U2_s,
+                bool antisymetry) {
   // variables
   for (int i=0; i<n; i++) {
     lpx[i] = IloNumVarArray(lpEnv, K, 0, 1);
@@ -319,21 +323,23 @@ void setLpModel(IloEnv& lpEnv, IloModel& lpModel, VarNumMatrix& lpx, VarNumMatri
   }
 
   // break symetry
-  assert(K <= n);
-  for (int i=0; i<K-1; i++) {
-    for (int k=i+1; k<K; k++) {
-      lpModel.add(lpx[i][k] == 0);
+  if (antisymetry) {
+    assert(K <= n);
+    for (int i=0; i<K-1; i++) {
+      for (int k=i+1; k<K; k++) {
+        lpModel.add(lpx[i][k] == 0);
+      }
     }
-  }
-  for (int i=1; i<n; i++) {
-    for (int k=1; k<K-1; k++) {
-      for (int kk=k+1; kk<K; kk++) {
-        IloExpr exprCtSymetry(lpEnv);
-        for (int j=0; j<i; j++) {
-          exprCtSymetry += lpx[j][k];
+    for (int i=1; i<n; i++) {
+      for (int k=1; k<K-1; k++) {
+        for (int kk=k+1; kk<K; kk++) {
+          IloExpr exprCtSymetry(lpEnv);
+          for (int j=0; j<i; j++) {
+            exprCtSymetry += lpx[j][k];
+          }
+          lpModel.add(lpx[i][kk] <= exprCtSymetry);
+          exprCtSymetry.end();
         }
-        lpModel.add(lpx[i][kk] <= exprCtSymetry);
-        exprCtSymetry.end();
       }
     }
   }
@@ -754,6 +760,7 @@ int main(int argc, char* argv[]){
   time_t timeBegin = time(NULL);
   double maxTime = 60;
   string outputFileName = "defaultSave.txt";
+  bool antisymetry = true;
   for (int i = 0; i < argc; i++){
       if (string(argv[i]).compare("-instanceName") == 0)
           instanceName = argv[i + 1];
@@ -795,8 +802,8 @@ int main(int argc, char* argv[]){
   VarNumMatrix lpy(lpEnv, n-1);
   IloNumVar lpz(lpEnv, 0);
 
-  setModel(env, model, x, y, z, U1_s, U2_s);
-  setLpModel(lpEnv, lpModel, lpx, lpy, lpz, U1_s, U2_s);
+  setModel(env, model, x, y, z, U1_s, U2_s, antisymetry);
+  setLpModel(lpEnv, lpModel, lpx, lpy, lpz, U1_s, U2_s, antisymetry);
 
   // Resolution
   IloNum valueSolution;
