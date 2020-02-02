@@ -71,7 +71,7 @@ def SP2k(yki,k,w_v,W_v,W,n):
     
     
     
-def SP1(x,edges,lij,L,n):
+def SP1(x,edges,lij,L,n,lh):
     # Instantiate a Glop solver, naming it LinearExample.
     solver = pywraplp.Solver('SP2solver',pywraplp.Solver.GLOP_LINEAR_PROGRAMMING)
 
