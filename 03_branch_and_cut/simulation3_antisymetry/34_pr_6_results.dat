@@ -1,0 +1,4 @@
+instance: /home/matthieu/ECMA/projet_optim_robuste/ECMA_projet_robuste/03_branch_and_cut/../data_small/34_pr_6.tsp
+calculation_time: 181
+best integer : 368288
+best inf bound : 27027.1
