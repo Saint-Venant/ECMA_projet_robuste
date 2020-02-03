@@ -71,8 +71,8 @@ def getFeasibleSolution(data, verbose=False):
                     acceptSwitch = True
                     break
                 else:
-                    yki[kMax][i_change] = 1
                     yki[new_k][i_change] = 0
+                    yki[kMax][i_change] = 1
             if acceptSwitch:
                 break
 
@@ -116,7 +116,7 @@ def V2(yki, n, K):
         if yki_bis[k][i1] == 1:
             cluster1 = k
             yki_bis[k][i1] = 0
-        if yki_bis[k][i2] == 2:
+        if yki_bis[k][i2] == 1:
             cluster2 = k
             yki_bis[k][i2] = 0
     yki_bis[cluster1][i2] = 1
@@ -124,11 +124,14 @@ def V2(yki, n, K):
     return yki_bis
 
 def isFeasible(yki, data):
+    for i in range(data.n):
+        assert(sum([yki[k][i] for k in range(data.K)]) == 1)
     values_SP2k, valMax, kMax = compute_SP2k(yki, data)
     return valMax <= data.B
 
 def draw_V():
     alpha = np.random.random()
+    return V2
     if alpha < 0.5:
         return V1
     else:
@@ -156,16 +159,15 @@ def descent(yki, data, dt=30, verbose=False):
                     print(' > value : ', value)
     return yki, value
 
-def heuristique(instanceFile, dtSearch=30, nbSearch=4):
+def heuristique(instanceFile, dtSearch=30, nbSearch=4, verbose=False):
     # load data
-    instanceFile = '..\\modified_data\\52_berlin_9.dat'
     n,L,W,K,B,w_v,W_v,lh,coordonnees,lij=load_data(path=instanceFile)
     data = Data(n, L, W, K, B, w_v, W_v, lh, coordonnees, lij)
 
     values = []
     for p in range(nbSearch):
         yki = getFeasibleSolution(data)
-        yki, value = descent(yki, data, dt=dtSearch)
+        yki, value = descent(yki, data, dt=dtSearch, verbose=verbose)
         values.append(value)
     print(values)
     return np.min(values)
@@ -173,10 +175,5 @@ def heuristique(instanceFile, dtSearch=30, nbSearch=4):
 if __name__ == '__main__':
     #np.random.seed()
     # load data
-    instanceFile = '..\\modified_data\\52_berlin_9.dat'
-    '''n,L,W,K,B,w_v,W_v,lh,coordonnees,lij=load_data(path=instanceFile)
-    data = Data(n, L, W, K, B, w_v, W_v, lh, coordonnees, lij)
-
-    yki = getFeasibleSolution(data)
-    yki, _ = descent(yki, data, verbose=True)'''
-    heuristique(instanceFile, dtSearch=45, nbSearch=3)
+    instanceFile = '..\\modified_data\\10_ulysses_3.dat'
+    value = heuristique(instanceFile, dtSearch=15, nbSearch=1, verbose=False)

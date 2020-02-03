@@ -125,6 +125,7 @@ def resultat_heuristique():
     for _, _, files in os.walk(racine):
         for file in files:
             t_debut=time()
+            #print(file)
             heuristique(chemin_fichier='modified_data\\'+file)
             t_fin=time()
             times_list.append(t_fin-t_debut)
@@ -132,6 +133,7 @@ def resultat_heuristique():
     plt.title('Diagramme de performances - heuristique')
     plt.xlabel('Temps (s)')
     plt.ylabel("Nombre d'instances résolues par l'heuristique")
+    plt.savefig("Performances de l'heuristique",dpi=150)
     plt.show()
     return
 
