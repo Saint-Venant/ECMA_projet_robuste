@@ -760,7 +760,7 @@ int main(int argc, char* argv[]){
   time_t timeBegin = time(NULL);
   double maxTime = 60;
   string outputFileName = "defaultSave.txt";
-  bool antisymetry = true;
+  bool antisymetry = false;
   for (int i = 0; i < argc; i++){
       if (string(argv[i]).compare("-instanceName") == 0)
           instanceName = argv[i + 1];

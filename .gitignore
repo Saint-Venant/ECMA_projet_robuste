@@ -15,3 +15,4 @@ data_small/
 03_branch_and_cut/main
 03_branch_and_cut/defaultSave.txt
 03_branch_and_cut/simulation3/
+03_branch_and_cut/simulation3_withoutAntisymetry/
