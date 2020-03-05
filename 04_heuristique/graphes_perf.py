@@ -55,4 +55,5 @@ if __name__=='__main__':
     plt.title('Diagramme de performances')
     plt.xlabel('Temps (s)')
     plt.ylabel("Nombre d'instances résolues")
+    plt.savefig("Diagramme de perf - comparaisons",dpi=150)
     plt.show()
