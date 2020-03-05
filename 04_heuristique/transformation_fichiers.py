@@ -38,11 +38,9 @@ def load_data(path='modified_data\\10_ulysses_3.dat'):
             for iter in range(2,len(lecture_coord)):
                 coordonnees.append([float(lecture_coord[iter].rstrip('],').split(',')[0]),float(lecture_coord[iter].rstrip('],').split(',')[1])])
             '''coordonnees contient bien les coordonnées comme dans le .dat'''
-            #print(coordonnees)
             lij=np.zeros(shape=(n,n))
             for i in range(n):
                 for j in range(n):
-                    
                     lij[i][j]=np.sqrt((coordonnees[i][0]-coordonnees[j][0])**2+(coordonnees[i][1]-coordonnees[j][1])**2)
             return(n,L,W,K,B,w_v,W_v,lh,coordonnees,lij)            
         
@@ -60,7 +58,7 @@ def transform(input_path,output_path,file):
             #print(ligne.rstrip('\n')+';\n')
             ecriture.write(ligne.rstrip('\n')+';\n')
             pass
-        if(ligne[0].isdigit() or ligne[0]=='-'):
+        if(ligne[0].isdigit()):
             #print(ligne.split(' '))
             coord=coord+'['+ligne.split(' ')[0]+','+ligne.split(' ')[1]+'],'
     
@@ -71,6 +69,7 @@ def transform(input_path,output_path,file):
     print(chemin_sortie)
     
     
+
 
 if __name__ == "__main__":
     input_path='C:\\Users\\thibaut\\Documents\\Ponts_3A\\CNAM\\ECMA\\projet_ECMA_2019_2020\\data'
