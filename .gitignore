@@ -1,10 +1,9 @@
 data_small/
 */__pycache__/
 
-01_plans_coupants/main
-01_plans_coupants/Makefile
 01_plans_coupants/simulation1/
-01_plans_coupants/defaultSave.txt
+01_plans_coupants/src/
+01_plans_coupants/Debug/
 
 02_dualisation/*.dat
 02_dualisation/*.project
