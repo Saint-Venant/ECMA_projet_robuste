@@ -863,7 +863,7 @@ int main(int argc, char* argv[]){
   time_t timer = time(NULL);
   double dt = maxTime - difftime(timer, timeBegin);
   try {
-    cplex.setParam(IloCplex::TiLim, dt);
+    cplex.setParam(IloCplex::NumParam(CPX_PARAM_TILIM), dt);
     //cplex.setParam(IloCplex::Param::Strategy::NodeSelect, 0);
     cplex.use(myLazyConstraintCallback(env, x, y, z, U1_s, U2_s, info, relaxation));
     cplex.solve();
